@@ -57,22 +57,6 @@ class GPUStatsMonitor(Callback):
         if not trainer.logger:
             raise MisconfigurationException("Cannot use DeviceStatsMonitor callback with Trainer that has no logger.")
 
-    def on_train_batch_start(
-        self,
-        trainer: "pl.Trainer",
-        pl_module: "pl.LightningModule",
-        batch: Any,
-        batch_idx: int,
-        unused: Optional[int] = 0,
-    ) -> None:
-        if not trainer.logger_connector.should_update_logs:
-            return
-
-        device_stats = self.get_device_stats(pl_module.device)
-        prefixed_device_stats = prefix_metrics_keys(device_stats, "on_train_batch_start")
-        assert trainer.logger is not None
-        trainer.logger.log_metrics(prefixed_device_stats, step=trainer.global_step)
-
     def on_train_batch_end(
         self,
         trainer: "pl.Trainer",
@@ -86,7 +70,7 @@ class GPUStatsMonitor(Callback):
             return
 
         device_stats = self.get_device_stats(pl_module.device)
-        prefixed_device_stats = prefix_metrics_keys(device_stats, "on_train_batch_end")
+        prefixed_device_stats = prefix_metrics_keys(device_stats, f"GPU_{pl_module.device.index}")
         assert trainer.logger is not None
         trainer.logger.log_metrics(prefixed_device_stats, step=trainer.global_step)
 
@@ -157,5 +141,5 @@ def _get_gpu_id(device_id: int) -> str:
 
 
 def prefix_metrics_keys(metrics_dict: Dict[str, float], prefix: str) -> Dict[str, float]:
-    return {prefix + "." + k: v for k, v in metrics_dict.items()}
+    return {prefix + "/" + k: v for k, v in metrics_dict.items()}
 
